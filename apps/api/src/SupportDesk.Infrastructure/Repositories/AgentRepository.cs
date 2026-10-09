@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using SupportDesk.Domain.Aggregates.Agents;
 using SupportDesk.Domain.Repositories;
@@ -12,4 +13,13 @@ public sealed class AgentRepository(SupportDbContext db) : IAgentRepository
         db.Set<Agent>()
             .Include(a => a.Specializations)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+    /// <summary>Loads agents and their specializations for ticket assignment.</summary>
+    public async Task<IReadOnlyList<Agent>> GetAllForAssignmentAsync(
+        CancellationToken ct) =>
+        await db.Set<Agent>()
+            .AsNoTracking()
+            .Include(a => a.Specializations)
+            .OrderBy(a => a.Id)
+            .ToListAsync(ct);
 }

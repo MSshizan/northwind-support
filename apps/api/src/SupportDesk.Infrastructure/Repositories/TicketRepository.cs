@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.Domain.Repositories;
@@ -26,6 +27,14 @@ public sealed class TicketRepository(SupportDbContext db) : ITicketRepository
 
         return $"TCK-{lastId + 1:D4}";
     }
+
+    public Task<int> CountOpenByAgentAsync(int agentId, CancellationToken ct) =>
+        db.Set<Ticket>()
+            .CountAsync(
+                t => t.AssignedAgentId == agentId &&
+                     t.Status != TicketStatus.Resolved &&
+                     t.Status != TicketStatus.Closed,
+                ct);
 
     public async Task AddAsync(Ticket ticket, CancellationToken ct) =>
         await db.Set<Ticket>().AddAsync(ticket, ct);

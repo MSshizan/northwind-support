@@ -38,18 +38,23 @@ public class RaiseTicketCommandHandlerTests
         Assert.Equal(TicketPriority.Medium, context.AddedTicket.Priority);
     }
 
-    [Fact]
-    public async Task HandleAsync_WhenCustomerDoesNotExist_Throws()
-    {
-        var context = new TicketCommandTestContext();
-        context.Customers
-            .Setup(c => c.ExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+    
+[Fact]
+public async Task HandleAsync_WhenCustomerDoesNotExist_Throws()
+{
+    var context = new TicketCommandTestContext();
 
-        var exception = await Assert.ThrowsAsync<NotFoundException>(
-            () => context.RaiseTicket.HandleAsync(Request(), CancellationToken.None));
+    context.Customers
+        .Setup(c => c.GetByIdAsync(
+            It.IsAny<int>(),
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync((SupportDesk.Domain.Aggregates.Customers.Customer?)null);
 
-        Assert.Contains("Customer", exception.Message);
-        context.VerifySaved(Times.Never());
-    }
+    var exception = await Assert.ThrowsAsync<NotFoundException>(
+        () => context.RaiseTicket.HandleAsync(Request(), CancellationToken.None));
+
+    Assert.Contains("Customer", exception.Message);
+    context.VerifySaved(Times.Never());
+}
+
 }

@@ -1,7 +1,10 @@
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SupportDesk.Application.Abstractions;
+using SupportDesk.Application.Configuration;
+using SupportDesk.Application.Features.Tickets.Services;
 using SupportDesk.Domain.Repositories;
 using SupportDesk.Infrastructure.Data;
 using SupportDesk.Infrastructure.Queries;
@@ -27,19 +30,28 @@ public static class DependencyInjection
         services.AddDbContext<SupportDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
 
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SupportDbContext>());
+        services.AddScoped<IUnitOfWork>(
+            sp => sp.GetRequiredService<SupportDbContext>());
 
         services.AddSingleton<IClock, SystemClock>();
+
+        // Register SLA configuration from appsettings.json.
+        services.Configure<SlaOptions>(
+            configuration.GetSection(SlaOptions.SectionName));
 
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
 
+        // Ticket triage
+        services.AddScoped<TicketTriageService>();
+
         services.AddScoped<ITicketQueries, TicketQueries>();
         services.AddScoped<ICustomerQueries, CustomerQueries>();
         services.AddScoped<IAgentQueries, AgentQueries>();
         services.AddScoped<ICategoryQueries, CategoryQueries>();
+        services.AddScoped<ITicketEscalationRepository, TicketEscalationRepository>();
 
         services.AddScoped<SupportDbSeeder>();
 

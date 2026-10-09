@@ -1,3 +1,4 @@
+
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SupportDesk.Application.Features.Agents.Queries.GetAgents;
@@ -6,6 +7,7 @@ using SupportDesk.Application.Features.Customers.Queries.GetCustomer;
 using SupportDesk.Application.Features.Customers.Queries.GetCustomers;
 using SupportDesk.Application.Features.Tickets.Commands.AssignTicket;
 using SupportDesk.Application.Features.Tickets.Commands.ChangeTicketStatus;
+using SupportDesk.Application.Features.Tickets.Commands.EscalateTicket;
 using SupportDesk.Application.Features.Tickets.Commands.RaiseTicket;
 using SupportDesk.Application.Features.Tickets.Queries.GetTicket;
 using SupportDesk.Application.Features.Tickets.Queries.SearchTickets;
@@ -22,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<RaiseTicketCommandHandler>();
         services.AddScoped<ChangeTicketStatusCommandHandler>();
         services.AddScoped<AssignTicketCommandHandler>();
+        services.AddScoped<EscalateTicketCommandHandler>();
+
         services.AddScoped<SearchTicketsQueryHandler>();
         services.AddScoped<GetTicketQueryHandler>();
 
@@ -29,10 +33,10 @@ public static class DependencyInjection
         services.AddScoped<GetCustomerQueryHandler>();
 
         services.AddScoped<GetAgentsQueryHandler>();
-
         services.AddScoped<GetCategoriesQueryHandler>();
 
-        services.AddValidatorsFromAssemblyContaining<RaiseTicketCommandHandler>(ServiceLifetime.Singleton);
+        services.AddValidatorsFromAssemblyContaining<RaiseTicketCommandHandler>(
+            ServiceLifetime.Singleton);
 
         return services;
     }

@@ -1,3 +1,4 @@
+
 using SupportDesk.Domain.Aggregates.Tickets;
 
 namespace SupportDesk.Domain.Repositories;
@@ -13,6 +14,9 @@ public interface ITicketRepository
 
     /// <summary>The next unused ticket reference, e.g. TCK-0041.</summary>
     Task<string> NextReferenceAsync(CancellationToken ct);
+
+    /// <summary>Counts tickets that are still open and assigned to an agent.</summary>
+    Task<int> CountOpenByAgentAsync(int agentId, CancellationToken ct);
 
     Task AddAsync(Ticket ticket, CancellationToken ct);
 }

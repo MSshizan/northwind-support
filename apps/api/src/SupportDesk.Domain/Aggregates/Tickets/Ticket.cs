@@ -1,3 +1,4 @@
+
 using SupportDesk.Domain.Common;
 using SupportDesk.Domain.Exceptions;
 
@@ -109,6 +110,20 @@ public sealed class Ticket : AggregateRoot
     public void AssignTo(int? agentId, DateTime nowUtc)
     {
         AssignedAgentId = agentId;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>Sets the SLA deadline calculated by the triage workflow.</summary>
+    public void SetDueAt(DateTime? dueAtUtc, DateTime nowUtc)
+    {
+        DueAtUtc = dueAtUtc;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>Changes the ticket priority and updates its modification timestamp.</summary>
+    public void SetPriority(TicketPriority priority, DateTime nowUtc)
+    {
+        Priority = priority;
         UpdatedAtUtc = nowUtc;
     }
 }

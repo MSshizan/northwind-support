@@ -26,4 +26,55 @@ public class SlaEvaluatorTests
     [Fact]
     public void Evaluate_OpenAndBeforeDue_IsWithinSla() =>
         Assert.Equal(SlaStatus.WithinSla, SlaEvaluator.Evaluate(Now.AddHours(1), null, Now));
+
+
+    
+    [Fact]
+    public void Evaluate_OpenWithMoreThan25PercentRemaining_IsWithinSla()
+    {
+        var start = Now;
+        var window = TimeSpan.FromHours(4);
+
+        Assert.Equal(
+            SlaStatus.WithinSla,
+            SlaEvaluator.Evaluate(
+                start.Add(window),
+                null,
+                start,
+                window,
+                start.AddHours(2)));
+    }
+
+    [Fact]
+    public void Evaluate_Exactly25PercentRemaining_IsAtRisk()
+    {
+        var start = Now;
+        var window = TimeSpan.FromHours(4);
+
+        Assert.Equal(
+            SlaStatus.AtRisk,
+            SlaEvaluator.Evaluate(
+                start.Add(window),
+                null,
+                start,
+                window,
+                start.AddHours(3)));
+    }
+
+    [Fact]
+    public void Evaluate_OpenWithLessThan25PercentRemaining_IsAtRisk()
+    {
+        var start = Now;
+        var window = TimeSpan.FromHours(4);
+
+        Assert.Equal(
+            SlaStatus.AtRisk,
+            SlaEvaluator.Evaluate(
+                start.Add(window),
+                null,
+                start,
+                window,
+                start.AddHours(3).AddMinutes(30)));
+    }
+
 }
