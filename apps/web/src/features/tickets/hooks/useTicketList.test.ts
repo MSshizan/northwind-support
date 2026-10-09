@@ -1,3 +1,4 @@
+
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ticketsApi } from '../../../api/tickets';
@@ -50,5 +51,31 @@ describe('useTicketList', () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.data?.items).toHaveLength(1);
+  });
+
+  it('applies a status filter immediately without waiting for the search debounce', async () => {
+    const { result } = renderHook(() => useTicketList());
+
+    // Complete the initial ticket-list request.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(getTickets).toHaveBeenCalledTimes(1);
+
+    // Change the status filter.
+    act(() => {
+      result.current.updateFilters({ status: 'InProgress' });
+    });
+
+    // The status change should trigger a request immediately.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(getTickets).toHaveBeenCalledTimes(2);
+    expect(getTickets).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'InProgress', page: 1 }),
+    );
   });
 });
