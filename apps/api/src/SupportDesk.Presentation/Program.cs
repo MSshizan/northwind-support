@@ -3,9 +3,11 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SupportDesk.Application;
 using SupportDesk.Infrastructure;
+using SupportDesk.Infrastructure.Data;
 using SupportDesk.Presentation.Extensions;
 using SupportDesk.Presentation.Filters;
 using SupportDesk.Presentation.Middleware;
@@ -78,7 +80,16 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Health check verifies that the application can connect to the database.
+builder.Services
+    .AddHealthChecks()
+    .AddDbContextCheck<SupportDbContext>();
+
 var app = builder.Build();
+
+// The health endpoint is available without a JWT.
+app.MapHealthChecks("/health")
+    .AllowAnonymous();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

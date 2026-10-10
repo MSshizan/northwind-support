@@ -41,7 +41,7 @@ services:
       Jwt__SigningKey: "${Jwt__SigningKey:?Set Jwt__SigningKey in your local .env file}"
       Jwt__ExpiryMinutes: "60"
     ports:
-      - "8080:8080"
+      - "5080:8080"
     depends_on:
       sqlserver:
         condition: service_healthy
