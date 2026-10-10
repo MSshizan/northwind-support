@@ -1,4 +1,9 @@
+
+using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 using SupportDesk.Application;
 using SupportDesk.Infrastructure;
 using SupportDesk.Presentation.Extensions;
@@ -8,6 +13,24 @@ using SupportDesk.Presentation.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 const string FrontendCorsPolicy = "frontend";
+
+var signingKey = builder.Configuration["Jwt:SigningKey"];
+
+if (string.IsNullOrWhiteSpace(signingKey) ||
+    signingKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        "JWT signing key is missing or too short. " +
+        "Configure Jwt__SigningKey with a strong secret of at least 32 characters.");
+}
+
+var expiryMinutes = builder.Configuration.GetValue<int?>("Jwt:ExpiryMinutes") ?? 60;
+
+if (expiryMinutes <= 0)
+{
+    throw new InvalidOperationException(
+        "Jwt:ExpiryMinutes must be greater than zero.");
+}
 
 builder.Services
     .AddControllers(options => options.Filters.Add<ValidationFilter>())
@@ -27,6 +50,31 @@ builder.Services.AddCors(options => options.AddPolicy(
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(signingKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+
+// Require an authenticated user for every endpoint by default.
+// Controllers can explicitly opt out with [AllowAnonymous].
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -45,6 +93,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors(FrontendCorsPolicy);
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

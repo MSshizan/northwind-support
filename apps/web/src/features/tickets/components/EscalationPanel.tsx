@@ -13,7 +13,6 @@ interface EscalationPanelProps {
 
 export function EscalationPanel({ ticket, onUpdated }: EscalationPanelProps) {
   const [reason, setReason] = useState('');
-  const [escalatedBy, setEscalatedBy] = useState('');
   const [history, setHistory] = useState<TicketEscalation[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,15 +49,9 @@ export function EscalationPanel({ ticket, onUpdated }: EscalationPanelProps) {
     event.preventDefault();
 
     const trimmedReason = reason.trim();
-    const trimmedEscalatedBy = escalatedBy.trim();
 
     if (trimmedReason.length < 5 || trimmedReason.length > 500) {
       setError('The reason must contain between 5 and 500 characters.');
-      return;
-    }
-
-    if (!trimmedEscalatedBy || trimmedEscalatedBy.length > 100) {
-      setError('Please enter your name (maximum 100 characters).');
       return;
     }
 
@@ -69,7 +62,6 @@ export function EscalationPanel({ ticket, onUpdated }: EscalationPanelProps) {
     try {
       const updatedTicket = await ticketsApi.escalateTicket(ticket.id, {
         reason: trimmedReason,
-        escalatedBy: trimmedEscalatedBy,
       });
 
       onUpdated(updatedTicket);
@@ -109,17 +101,6 @@ export function EscalationPanel({ ticket, onUpdated }: EscalationPanelProps) {
             <p id="escalation-reason-help" className="summary__note">
               Enter 5–500 characters. {reason.trim().length}/500
             </p>
-          </div>
-
-          <div>
-            <label htmlFor="escalated-by">Your name</label>
-            <input
-              id="escalated-by"
-              value={escalatedBy}
-              onChange={(event) => setEscalatedBy(event.target.value)}
-              maxLength={100}
-              required
-            />
           </div>
 
           {error && (

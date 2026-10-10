@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="../SupportDesk.Application/SupportDesk.Application.csproj" />
     <ProjectReference Include="../SupportDesk.Domain/SupportDesk.Domain.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
   </ItemGroup>
 
   <ItemGroup>

@@ -22,7 +22,7 @@ public sealed class EscalateTicketCommandHandler(
 {
     public async Task<TicketDetailDto> HandleAsync(
         int id,
-        EscalateTicketRequest request,
+        EscalateTicketCommand request,
         CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();

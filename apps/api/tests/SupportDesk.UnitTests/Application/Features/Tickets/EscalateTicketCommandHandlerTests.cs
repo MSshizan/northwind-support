@@ -1,6 +1,5 @@
-
-using SupportDesk.Application.Contracts.Tickets;
 using SupportDesk.Application.Exceptions;
+using SupportDesk.Application.Features.Tickets.Commands.EscalateTicket;
 using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.UnitTests.TestDoubles;
 
@@ -15,7 +14,7 @@ public class EscalateTicketCommandHandlerTests
         var ticket = context.ExistingTicket(
             new TicketBuilder().WithPriority(TicketPriority.Low).Build());
 
-        var request = new EscalateTicketRequest(
+        var request = new EscalateTicketCommand(
             "Customer impact has increased",
             "Team Lead");
 
@@ -24,6 +23,7 @@ public class EscalateTicketCommandHandlerTests
 
         Assert.Equal(TicketPriority.Medium, ticket.Priority);
         Assert.NotNull(result);
+
         context.Escalations.Verify(
             e => e.AddAsync(
                 It.Is<TicketEscalation>(history =>
@@ -50,7 +50,7 @@ public class EscalateTicketCommandHandlerTests
         await Assert.ThrowsAsync<ValidationException>(() =>
             context.EscalateTicket.HandleAsync(
                 ticket.Id,
-                new EscalateTicketRequest(reason, "Team Lead"),
+                new EscalateTicketCommand(reason, "Team Lead"),
                 CancellationToken.None));
 
         context.VerifySaved(Times.Never());
@@ -69,7 +69,9 @@ public class EscalateTicketCommandHandlerTests
         await Assert.ThrowsAsync<NotFoundException>(() =>
             context.EscalateTicket.HandleAsync(
                 999,
-                new EscalateTicketRequest("Customer impact increased", "Team Lead"),
+                new EscalateTicketCommand(
+                    "Customer impact increased",
+                    "Team Lead"),
                 CancellationToken.None));
 
         context.VerifySaved(Times.Never());
@@ -85,7 +87,9 @@ public class EscalateTicketCommandHandlerTests
         await Assert.ThrowsAsync<ConflictException>(() =>
             context.EscalateTicket.HandleAsync(
                 ticket.Id,
-                new EscalateTicketRequest("Customer impact increased", "Team Lead"),
+                new EscalateTicketCommand(
+                    "Customer impact increased",
+                    "Team Lead"),
                 CancellationToken.None));
 
         context.VerifySaved(Times.Never());
@@ -105,7 +109,9 @@ public class EscalateTicketCommandHandlerTests
         await Assert.ThrowsAsync<ConflictException>(() =>
             context.EscalateTicket.HandleAsync(
                 ticket.Id,
-                new EscalateTicketRequest("Customer impact increased", "Team Lead"),
+                new EscalateTicketCommand(
+                    "Customer impact increased",
+                    "Team Lead"),
                 CancellationToken.None));
 
         context.VerifySaved(Times.Never());

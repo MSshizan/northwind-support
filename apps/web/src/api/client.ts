@@ -1,4 +1,8 @@
 import type { ProblemDetails } from '../types/api';
+import {
+  clearAuthSession,
+  getAuthSession,
+} from '../features/auth/authStorage';
 
 /**
  * Where the API lives. In development this stays '/api' and the Vite dev server proxies it
@@ -26,17 +30,32 @@ export class ApiError extends Error {
 }
 
 /**
- * The single place that talks to the API. Returns parsed JSON, or throws an
- * {@link ApiError} that callers can show to the user.
+ * The single place that talks to the API. Attaches the current JWT
+ * to requests and clears the session when the API returns 401.
  */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  // Do not attach a stale or expired token.
+  const session = getAuthSession();
+
+  if (session?.accessToken) {
+    headers.set('Authorization', `Bearer ${session.accessToken}`);
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
+
+  if (response.status === 401) {
+    clearAuthSession();
+    window.dispatchEvent(new Event('auth:unauthorized'));
+  }
 
   if (!response.ok) {
     const problem = await readProblem(response);

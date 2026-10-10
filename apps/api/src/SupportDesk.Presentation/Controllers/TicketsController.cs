@@ -1,4 +1,5 @@
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SupportDesk.Application.Contracts.Common;
 using SupportDesk.Application.Contracts.Tickets;
@@ -63,14 +64,28 @@ public sealed class TicketsController : ControllerBase
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
 
-    /// <summary>Escalates a ticket and records the escalation history.</summary>
+    /// <summary>Escalates a ticket and records the authenticated agent.</summary>
     [HttpPost("{id:int}/escalate")]
     public Task<TicketDetailDto> Escalate(
         int id,
         EscalateTicketRequest request,
         [FromServices] EscalateTicketCommandHandler handler,
-        CancellationToken ct) =>
-        handler.HandleAsync(id, request, ct);
+        CancellationToken ct)
+    {
+        var escalatedBy = User.FindFirstValue(ClaimTypes.Name);
+
+        if (string.IsNullOrWhiteSpace(escalatedBy))
+        {
+            throw new UnauthorizedAccessException(
+                "The authenticated agent's name was not found in the token.");
+        }
+
+        var command = new EscalateTicketCommand(
+            request.Reason,
+            escalatedBy);
+
+        return handler.HandleAsync(id, command, ct);
+    }
 
     /// <summary>Returns a ticket's escalation history, newest first.</summary>
     [HttpGet("{id:int}/escalations")]

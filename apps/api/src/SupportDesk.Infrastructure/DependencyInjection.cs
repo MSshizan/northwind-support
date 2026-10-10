@@ -1,10 +1,12 @@
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SupportDesk.Application.Abstractions;
 using SupportDesk.Application.Configuration;
 using SupportDesk.Application.Features.Tickets.Services;
+using SupportDesk.Domain.Aggregates.Agents;
 using SupportDesk.Domain.Repositories;
 using SupportDesk.Infrastructure.Data;
 using SupportDesk.Infrastructure.Queries;
@@ -34,6 +36,9 @@ public static class DependencyInjection
             sp => sp.GetRequiredService<SupportDbContext>());
 
         services.AddSingleton<IClock, SystemClock>();
+
+        // Use ASP.NET Core's vetted password hashing implementation.
+        services.AddScoped<IPasswordHasher<Agent>, PasswordHasher<Agent>>();
 
         // Register SLA configuration from appsettings.json.
         services.Configure<SlaOptions>(

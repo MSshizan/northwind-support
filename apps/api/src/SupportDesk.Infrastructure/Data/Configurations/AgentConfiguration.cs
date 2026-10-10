@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SupportDesk.Domain.Aggregates.Agents;
@@ -13,19 +14,31 @@ public sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
 
         builder.HasKey(a => a.Id);
 
-        builder.Property(a => a.FullName).HasMaxLength(200).IsRequired();
+        builder.Property(a => a.FullName)
+            .HasMaxLength(200)
+            .IsRequired();
 
-        builder.Property(a => a.Email).HasMaxLength(256).IsRequired();
+        builder.Property(a => a.Email)
+            .HasMaxLength(256)
+            .IsRequired();
 
-        builder.Property(a => a.CreatedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(a => a.PasswordHash)
+            .HasMaxLength(500)
+            .IsRequired(false);
 
-        builder.HasIndex(a => a.Email).IsUnique().HasDatabaseName("UQ_Agents_Email");
+        builder.Property(a => a.CreatedAtUtc)
+            .HasColumnType("datetime2(3)");
+
+        builder.HasIndex(a => a.Email)
+            .IsUnique()
+            .HasDatabaseName("UQ_Agents_Email");
 
         builder.HasMany(a => a.Specializations)
             .WithOne()
             .HasForeignKey(s => s.AgentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Navigation(a => a.Specializations).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(a => a.Specializations)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

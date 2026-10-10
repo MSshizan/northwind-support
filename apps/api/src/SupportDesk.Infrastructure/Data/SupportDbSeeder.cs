@@ -1,3 +1,5 @@
+
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SupportDesk.Application.Abstractions;
@@ -10,21 +12,46 @@ namespace SupportDesk.Infrastructure.Data;
 
 /// <summary>
 /// Development seed data: the small support desk the team uses to demo the application.
-/// Mirrors <c>database/02_seed.sql</c>, including the relative timestamps, so both routes
+/// Mirrors database/02_seed.sql, including the relative timestamps, so both routes
 /// produce the same database.
 /// </summary>
 /// <remarks>
 /// Every aggregate is built through its own behaviour. The two historical values no behaviour
 /// produces - a ticket's last update and its due date - are set through EF Core directly.
 /// </remarks>
-public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<SupportDbSeeder> logger)
+public sealed class SupportDbSeeder(
+    SupportDbContext db,
+    IClock clock,
+    ILogger<SupportDbSeeder> logger,
+    IPasswordHasher<Agent> passwordHasher)
 {
+    private const string DevelopmentPassword = "NorthwindDev!2026";
+
     /// <summary>Seeds the database, unless it already has tickets in it.</summary>
     public async Task SeedAsync(CancellationToken ct = default)
     {
+        // Existing agents may predate the PasswordHash column or may not have
+        // a password hash yet. Populate missing hashes before the early return.
+        var existingAgents = await db.Set<Agent>()
+            .Where(a => a.PasswordHash == null || a.PasswordHash == "")
+            .ToListAsync(ct);
+
+        foreach (var agent in existingAgents)
+        {
+            agent.SetPasswordHash(
+                passwordHasher.HashPassword(agent, DevelopmentPassword));
+        }
+
+        if (existingAgents.Count > 0)
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Do not duplicate the demo data if tickets already exist.
         if (await db.Set<Ticket>().AnyAsync(ct))
         {
-            logger.LogInformation("Seed data already present; skipping.");
+            logger.LogInformation(
+                "Seed data already present; skipping ticket and reference-data seeding.");
             return;
         }
 
@@ -33,6 +60,13 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         var categories = SeedCategories();
         var customers = SeedCustomers(now);
         var agents = SeedAgents(now);
+
+        // Hash passwords for newly created development agents.
+        foreach (var agent in agents)
+        {
+            agent.SetPasswordHash(
+                passwordHasher.HashPassword(agent, DevelopmentPassword));
+        }
 
         db.AddRange(categories);
         db.AddRange(customers);
@@ -47,7 +81,10 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
 
         logger.LogInformation(
             "Seeded {Categories} categories, {Customers} customers, {Agents} agents and {Tickets} tickets.",
-            categories.Count, customers.Count, agents.Count, await db.Set<Ticket>().CountAsync(ct));
+            categories.Count,
+            customers.Count,
+            agents.Count,
+            await db.Set<Ticket>().CountAsync(ct));
     }
 
     private static List<Category> SeedCategories() =>
@@ -71,7 +108,12 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
 
     private static List<Agent> SeedAgents(DateTime now)
     {
-        var yuki = new Agent("Yuki Tanaka", "yuki.tanaka@northwind-support.example", 8, now.AddDays(-600));
+        var yuki = new Agent(
+            "Yuki Tanaka",
+            "yuki.tanaka@northwind-support.example",
+            8,
+            now.AddDays(-600));
+
         yuki.Deactivate();
 
         return
@@ -88,9 +130,11 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
     /// <summary>
     /// Who can handle what:
     /// Alex - General, Technical | Ben - Technical, Outage | Priya - Outage, Security
-    /// Sara - General, Billing   | Marcus - Billing, Security | Yuki (inactive) - Technical
+    /// Sara - General, Billing | Marcus - Billing, Security | Yuki (inactive) - Technical
     /// </summary>
-    private static void SeedSpecializations(List<Agent> agents, List<Category> categories)
+    private static void SeedSpecializations(
+        List<Agent> agents,
+        List<Category> categories)
     {
         (int Agent, int Category)[] pairs =
         [
@@ -109,7 +153,7 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
     }
 
     /// <summary>
-    /// One ticket per row of the seed table. <c>SlaWindowMinutes</c> is what the current
+    /// One ticket per row of the seed table. SlaWindowMinutes is what the current
     /// response-window rules would give for that priority and customer tier, and the mix of
     /// creation times deliberately produces tickets that are comfortably inside their window,
     /// close to it, and past it.
@@ -143,11 +187,13 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
             new("TCK-0018", "Annual plan quote request", "Please send a quote for switching to annual billing.", 6, 2, 5, TicketPriority.Low, TicketStatus.New, 600, 2160, null),
             new("TCK-0019", "Audit log export missing entries", "Entries between 02:00 and 04:00 are absent from the export.", 4, 5, 5, TicketPriority.High, TicketStatus.Open, 240, 480, null),
             new("TCK-0020", "Timezone shown incorrectly on reports", "Reports render in UTC instead of our local timezone.", 2, 1, 5, TicketPriority.Medium, TicketStatus.InProgress, 100, 1440, null),
+
             // Open, waiting for an owner.
             new("TCK-0021", "Possible data exposure in shared links", "A shared link appears to be accessible without the password.", 1, 5, null, TicketPriority.Critical, TicketStatus.New, 45, 120, null),
             new("TCK-0022", "Credit note not applied to next invoice", "The credit note from August was never applied.", 4, 2, null, TicketPriority.High, TicketStatus.New, 500, 480, null),
             new("TCK-0023", "Request a walkthrough of the new UI", "Could someone show the team the new navigation?", 5, 1, null, TicketPriority.Medium, TicketStatus.New, 20, 1440, null),
             new("TCK-0024", "Mobile app crashes on cold start", "Happens on Android 14 only, about half the time.", 6, 3, null, TicketPriority.Low, TicketStatus.New, 90, 2160, null),
+
             // Resolved and closed.
             new("TCK-0025", "Search returns stale results", "Newly created items take minutes to appear in search.", 1, 3, 1, TicketPriority.High, TicketStatus.Resolved, 3000, 240, 200),
             new("TCK-0026", "Add a second admin to our workspace", "Please grant admin rights to our new team lead.", 2, 1, 1, TicketPriority.Medium, TicketStatus.Closed, 5000, 1440, 1000),
@@ -188,13 +234,17 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
             if (row.Status != TicketStatus.New)
             {
                 // Resolving or closing stamps the resolution time; open statuses clear it.
-                ticket.ChangeStatus(row.Status, createdAtUtc.AddMinutes(row.ResolvedAfterMinutes ?? 0));
+                ticket.ChangeStatus(
+                    row.Status,
+                    createdAtUtc.AddMinutes(row.ResolvedAfterMinutes ?? 0));
             }
 
             var entry = db.Add(ticket);
             entry.Property(t => t.UpdatedAtUtc).CurrentValue =
-                createdAtUtc.AddMinutes(row.ResolvedAfterMinutes ?? row.CreatedMinutesAgo / 2);
-            entry.Property(t => t.DueAtUtc).CurrentValue = createdAtUtc.AddMinutes(row.SlaWindowMinutes);
+                createdAtUtc.AddMinutes(
+                    row.ResolvedAfterMinutes ?? row.CreatedMinutesAgo / 2);
+            entry.Property(t => t.DueAtUtc).CurrentValue =
+                createdAtUtc.AddMinutes(row.SlaWindowMinutes);
         }
     }
 
