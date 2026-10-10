@@ -1,5 +1,4 @@
-# SQL Server for local development only. The password below is a throwaway local
-# placeholder - never commit a real credential.
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -14,14 +13,49 @@ services:
       - supportdesk-sql:/var/opt/mssql
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1",
-        ]
+        - CMD
+        - /opt/mssql-tools18/bin/sqlcmd
+        - -S
+        - localhost
+        - -U
+        - sa
+        - -P
+        - "${MSSQL_SA_PASSWORD:-Local_Dev_Password1}"
+        - -C
+        - -Q
+        - "SELECT 1"
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=SupportDesk;User Id=sa;Password=${MSSQL_SA_PASSWORD:-Local_Dev_Password1};TrustServerCertificate=True;Encrypt=False"
+      Jwt__SigningKey: "${Jwt__SigningKey:?Set Jwt__SigningKey in your local .env file}"
+      Jwt__ExpiryMinutes: "60"
+    ports:
+      - "8080:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
   supportdesk-sql:
